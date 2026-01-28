@@ -24,8 +24,12 @@ describe('Certificate Loader', () => {
   it('should load a certificate successfully', () => {
     const mockP12 = {
       safeContents: [
-        { type: forge.pki.oids.certBag, cert: 'mockCert' },
-        { type: forge.pki.oids.pkcs8ShroudedKeyBag, key: 'mockKey' },
+        {
+          safeBags: {
+            [forge.pki.oids.certBag]: [{ type: forge.pki.oids.certBag, cert: 'mockCert' }],
+            [forge.pki.oids.pkcs8ShroudedKeyBag]: [{ type: forge.pki.oids.pkcs8ShroudedKeyBag, key: 'mockKey' }],
+          }
+        }
       ],
     };
     (forge.pkcs12.pkcs12FromAsn1 as jest.Mock).mockReturnValue(mockP12);

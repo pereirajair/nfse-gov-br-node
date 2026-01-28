@@ -34,7 +34,7 @@ export function signXml(xml: string, certificateData: CertificateData, tagToSign
     // 3. Create the signature of the <SignedInfo> block
     const signatureMd = forge.md.sha256.create();
     signatureMd.update(signedInfo, 'utf8');
-    const signature = privateKey.sign(signatureMd);
+    const signature = (privateKey as any).sign(signatureMd);
     const signatureB64 = forge.util.encode64(signature);
 
     // 4. Extract the certificate in Base64 format
