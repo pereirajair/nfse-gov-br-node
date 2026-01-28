@@ -2,6 +2,17 @@ import { signXml } from '../../src/core/signer';
 import { CertificateData } from '../../src/core/certificate';
 import * as forge from 'node-forge';
 
+jest.mock('node-forge', () => {
+  const original = jest.requireActual('node-forge');
+  return {
+    ...original,
+    pki: {
+      ...original.pki,
+      certificateToPem: () => '-----BEGIN CERTIFICATE-----\nMOCK_PEM\n-----END CERTIFICATE-----'
+    }
+  };
+});
+
 // A simplified mock for certificate data to avoid complex Pem parsing in tests
 const mockCertificateData: CertificateData = {
   privateKey: {

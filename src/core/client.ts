@@ -32,7 +32,7 @@ export class NfseClient {
     const tempPassword = Math.random().toString(36).substring(2);
 
     const p12Asn1 = forge.pkcs12.toPkcs12Asn1(
-      privateKey,
+      privateKey as any,
       [certificate, ...caCertificates],
       tempPassword,
       { algorithm: '3des' }

@@ -28,14 +28,21 @@ export function loadA1Certificate(pfxBuffer: Buffer, password: string): Certific
     const caCertificates: forge.pki.Certificate[] = [];
 
     // Find the private key and certificate
-    for (const bag of p12.safeContents) {
-      if (bag.type === forge.pki.oids.pkcs8ShroudedKeyBag) {
-        privateKey = bag.key;
-      } else if (bag.type === forge.pki.oids.certBag) {
-        if (certificate === null) {
-            certificate = bag.cert;
-        } else {
-            caCertificates.push(bag.cert);
+    for (const safeContent of p12.safeContents) {
+      for (const key in safeContent.safeBags) {
+        const bags = safeContent.safeBags[key];
+        if (Array.isArray(bags)) {
+          for (const bag of bags) {
+            if (bag.type === forge.pki.oids.pkcs8ShroudedKeyBag) {
+              privateKey = bag.key as forge.pki.PrivateKey;
+            } else if (bag.type === forge.pki.oids.certBag) {
+              if (certificate === null) {
+                certificate = bag.cert as forge.pki.Certificate;
+              } else {
+                caCertificates.push(bag.cert as forge.pki.Certificate);
+              }
+            }
+          }
         }
       }
     }
