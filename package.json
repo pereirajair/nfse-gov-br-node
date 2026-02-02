@@ -1,5 +1,5 @@
 {
-  "name": "nfse-gov-br-nacional",
+  "name": "nfse-gov-br-node",
   "version": "0.0.1",
   "description": "Library for interacting with the Brazilian NFSe Nacional API",
   "main": "dist/index.js",
