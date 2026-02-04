@@ -26,7 +26,7 @@ export function signXml(xml: string, certificateData: CertificateData, tagToSign
         privateKey: privateKeyPem,
         signatureAlgorithm: "http://www.w3.org/2000/09/xmldsig#rsa-sha1",
         canonicalizationAlgorithm: "http://www.w3.org/TR/2001/REC-xml-c14n-20010315"
-    });
+    } as any);
 
     // Extract ID reference
     // We assume the tagToSign matches the pattern <tagToSign ... Id="XYZ" ...>
@@ -47,7 +47,7 @@ export function signXml(xml: string, certificateData: CertificateData, tagToSign
         ],
         digestAlgorithm: "http://www.w3.org/2000/09/xmldsig#sha1",
         uri: referenceUri
-    });
+    } as any);
 
     // Custom KeyInfo provider
     // Implementing exactly as nfse-brazil-national does to ensure compatibility
