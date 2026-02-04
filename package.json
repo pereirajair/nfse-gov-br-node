@@ -9,7 +9,8 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "test": "jest"
+    "test": "jest",
+    "ship:minor": "git add . && git commit -m \"feat: atualização de rotina\" && npm version minor && git push --follow-tags"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",

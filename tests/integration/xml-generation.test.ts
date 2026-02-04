@@ -11,7 +11,7 @@ describe('XML Generation & Service Logic', () => {
     const mockDps: DPS = {
         ambiente: 2,
         versaoAplicacao: '1.0.0',
-        dataEmissao: new Date('2026-02-04T10:00:00-03:00'),
+        dataEmissao: '2026-02-04T10:00:00-03:00',
         serie: '1',
         numero: '100',
         competencia: '2026-02-01',
