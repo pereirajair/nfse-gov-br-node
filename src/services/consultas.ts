@@ -1,6 +1,5 @@
 import { NfseClient } from '../core/client';
-import { NFSe, DPSConsultaResponse } from '../models/responses';
-import { XMLParser, XMLBuilder } from 'fast-xml-parser';
+import { NFSeResponse, DPS, DPSResponse } from '../models/dps';
 
 /**
  * Consults an NFSe by its access key.
@@ -9,49 +8,42 @@ import { XMLParser, XMLBuilder } from 'fast-xml-parser';
  * @param client An instance of the configured NfseClient.
  * @returns A promise that resolves with the NFSe data.
  */
-export async function consultarNfseChave(chaveAcesso: string, client: NfseClient): Promise<NFSe> {
-  const xmlPayload = `<ConsultarNfse>
-                        <chaveAcesso>${chaveAcesso}</chaveAcesso>
-                      </ConsultarNfse>`;
-
-  // Placeholder for the actual API endpoint
-  const responseXml = await client.post('/ws/consultarNfse', xmlPayload);
-
-  const parser = new XMLParser();
-  const parsedResponse = parser.parse(responseXml);
-
-  // The exact path to the data needs to be verified against the API's response
-  const nfseData = parsedResponse?.retornoConsultaNfse?.nfse;
-  if (!nfseData) {
-    throw new Error('Could not find NFSe data in the API response.');
-  }
-
-  return nfseData as NFSe;
+export async function consultarNfseChave(chaveAcesso: string, client: NfseClient): Promise<NFSeResponse> {
+  // Use GET /nfse/{chaveAcesso} as per the documentation
+  const response = await client.get(`/nfse/${chaveAcesso}`);
+  return response as NFSeResponse;
 }
 
 /**
- * Consults a DPS by its access key.
+ * Consults a DPS by its Id.
  *
- * @param chaveAcesso The access key of the DPS.
+ * @param id The identifier of the DPS.
  * @param client An instance of the configured NfseClient.
- * @returns A promise that resolves with the DPS consultation data.
+ * @returns A promise that resolves with the DPS response data.
  */
-export async function consultarDpsChave(chaveAcesso: string, client: NfseClient): Promise<DPSConsultaResponse> {
-  const xmlPayload = `<ConsultarDps>
-                        <chaveAcesso>${chaveAcesso}</chaveAcesso>
-                      </ConsultarDps>`;
+export async function consultarDpsId(id: string, client: NfseClient): Promise<DPSResponse> {
+  const response = await client.get(`/dps/${id}`);
+  return response as DPSResponse;
+}
 
-  // Placeholder for the actual API endpoint
-  const responseXml = await client.post('/ws/consultarDps', xmlPayload);
-
-  const parser = new XMLParser();
-  const parsedResponse = parser.parse(responseXml);
-
-  // The exact path to the data needs to be verified against the API's response
-  const dpsData = parsedResponse?.retornoConsultaDps;
-  if (!dpsData) {
-    throw new Error('Could not find DPS data in the API response.');
+/**
+ * Verifies if an NFSe was emitted from a DPS Id.
+ *
+ * @param id The identifier of the DPS.
+ * @param client An instance of the configured NfseClient.
+ * @returns A promise that resolves to true if the NFSe exists, false otherwise.
+ */
+export async function verificarNfsePorDpsId(id: string, client: NfseClient): Promise<boolean> {
+  try {
+    // Verified by HEAD /nfse?id={id} according to some interpretations, 
+    // but the doc says "HEAD /nfse" path parameters or query? 
+    // doc: head /nfse, path parameters id required string
+    await client.head(`/nfse/${id}`);
+    return true;
+  } catch (error: any) {
+    if (error.message.includes('status 404')) {
+      return false;
+    }
+    throw error;
   }
-
-  return dpsData as DPSConsultaResponse;
 }

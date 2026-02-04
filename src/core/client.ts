@@ -52,28 +52,70 @@ export class NfseClient {
       httpsAgent,
       timeout,
       headers: {
-        'Content-Type': 'application/xml;charset=utf-8',
+        'Content-Type': 'application/json;charset=utf-8',
+        'Accept': 'application/json',
       },
     });
   }
 
   /**
-   * Sends a POST request to the specified path with the given XML payload.
+   * Sends a POST request to the specified path with the given payload.
    *
    * @param path The API endpoint path.
-   * @param xmlPayload The XML string to send.
+   * @param data The data to send (object or string).
    * @returns A promise that resolves with the response data.
    */
-  async post(path: string, xmlPayload: string): Promise<any> {
+  async post(path: string, data: any): Promise<any> {
     try {
-      const response = await this.client.post(path, xmlPayload);
+      const response = await this.client.post(path, data);
       return response.data;
     } catch (error) {
       // Enhance error handling to provide more context
       if (axios.isAxiosError(error)) {
         const { response } = error;
         const errorMessage = response?.data || error.message;
-        throw new Error(`API request failed with status ${response?.status}: ${errorMessage}`);
+        throw new Error(`API request failed with status ${response?.status}: ${JSON.stringify(errorMessage)}`);
+      }
+      throw new Error(`An unexpected error occurred: ${error}`);
+    }
+  }
+
+  /**
+   * Sends a GET request to the specified path.
+   *
+   * @param path The API endpoint path.
+   * @returns A promise that resolves with the response data.
+   */
+  async get(path: string): Promise<any> {
+    try {
+      const response = await this.client.get(path);
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const { response } = error;
+        const errorMessage = response?.data || error.message;
+        throw new Error(`API request failed with status ${response?.status}: ${JSON.stringify(errorMessage)}`);
+      }
+      throw new Error(`An unexpected error occurred: ${error}`);
+    }
+  }
+
+  /**
+   * Sends a HEAD request to the specified path.
+   *
+   * @param path The API endpoint path.
+   * @param params Optional query parameters.
+   * @returns A promise that resolves with the response headers.
+   */
+  async head(path: string, params?: any): Promise<any> {
+    try {
+      const response = await this.client.head(path, { params });
+      return response.headers;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const { response } = error;
+        // For HEAD requests, we mostly care about the status code
+        throw new Error(`API request failed with status ${response?.status}`);
       }
       throw new Error(`An unexpected error occurred: ${error}`);
     }

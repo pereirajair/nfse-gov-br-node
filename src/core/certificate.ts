@@ -27,39 +27,51 @@ export function loadA1Certificate(pfxBuffer: Buffer, password: string): Certific
     let certificate: forge.pki.Certificate | null = null;
     const caCertificates: forge.pki.Certificate[] = [];
 
-    // Find the private key and certificate
-    for (const safeContent of p12.safeContents) {
-      for (const key in safeContent.safeBags) {
-        const bags = safeContent.safeBags[key];
-        if (Array.isArray(bags)) {
-          for (const bag of bags) {
-            if (bag.type === forge.pki.oids.pkcs8ShroudedKeyBag) {
-              privateKey = bag.key as forge.pki.PrivateKey;
-            } else if (bag.type === forge.pki.oids.certBag) {
-              if (certificate === null) {
-                certificate = bag.cert as forge.pki.Certificate;
-              } else {
-                caCertificates.push(bag.cert as forge.pki.Certificate);
-              }
-            }
-          }
-        }
+    // 1. Get Private Keys (check both encrypted and unencrypted bags)
+    const keyBags = p12.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag });
+    const unshroudedKeyBags = p12.getBags({ bagType: forge.pki.oids.keyBag });
+
+    const combinedKeyBags = [
+      ...(keyBags[forge.pki.oids.pkcs8ShroudedKeyBag] || []),
+      ...(unshroudedKeyBags[forge.pki.oids.keyBag] || [])
+    ];
+
+    if (combinedKeyBags.length > 0) {
+      privateKey = combinedKeyBags[0].key as forge.pki.PrivateKey;
+    }
+
+    // 2. Get Certificates
+    const certBags = p12.getBags({ bagType: forge.pki.oids.certBag });
+    const certs = certBags[forge.pki.oids.certBag] || [];
+
+    for (const bag of certs) {
+      if (certificate === null) {
+        certificate = bag.cert as forge.pki.Certificate;
+      } else {
+        caCertificates.push(bag.cert as forge.pki.Certificate);
       }
     }
 
-    if (!privateKey || !certificate) {
-      throw new Error('Could not find private key or certificate in PFX/P12 file.');
+    if (!privateKey) {
+      throw new Error('Could not find private key in PFX/P12 file.');
+    }
+    if (!certificate) {
+      throw new Error('Could not find certificate in PFX/P12 file.');
     }
 
     return { privateKey, certificate, caCertificates };
   } catch (error) {
     if (error instanceof Error) {
-        if (error.message.includes('Invalid password')) {
-            throw new Error('The provided password for the certificate is incorrect.');
-        }
-        if(error.message.includes('Unable to parse PKCS#12')) {
-            throw new Error('Unable to parse the certificate. The file may be corrupt or in an unsupported format.');
-        }
+      if (error.message.includes('Invalid password')) {
+        throw new Error('The provided password for the certificate is incorrect.');
+      }
+      if (error.message.includes('Unable to parse PKCS#12')) {
+        throw new Error('Unable to parse the certificate. The file may be corrupt or in an unsupported format.');
+      }
+      // Re-throw our specific errors
+      if (error.message.includes('Could not find')) {
+        throw error;
+      }
     }
     throw new Error(`Failed to load A1 certificate: ${error}`);
   }

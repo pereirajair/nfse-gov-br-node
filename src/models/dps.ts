@@ -18,71 +18,105 @@ export interface Contato {
 }
 
 export interface DPS {
-  identificacao: {
-    numero: string;
-    serie: string;
-    dataEmissao: Date;
-    competencia: Date;
-    tipoTributacao: 'T' | 'F' | 'A' | 'B' | 'M' | 'N' | 'X' | 'V' | 'P' | 'S';
-  };
+  id?: string;
+  ambiente: 1 | 2; // 1-Produção, 2-Homologação
+  versaoAplicacao: string;
+  dataEmissao: string | Date; // ISO string or Date
+  competencia: string | Date; // YYYY-MM-DD or Date
+  serie: string;
+  numero: string;
+  tipoEmitente: number; // 1-Prestador, 2-Tomador, 3-Intermediário
+  municipioEmissao: string;
   prestador: {
     cnpj: string;
+    optanteSimplesNacional: 1 | 2 | 3; // 1-Não, 2-MEI, 3-ME/EPP
+    regimeEspecialTributacao?: number;
+    regimeApuracaoTributacaoSN?: number;
     inscricaoMunicipal?: string;
-    regimeEspecialTributacao?: string;
+    telefone?: string;
+    email?: string;
   };
   tomador: {
-    identificacao: {
-      cnpjCpf: string;
-      inscricaoMunicipal?: string;
+    cpf?: string;
+    cnpj?: string;
+    inscricaoMunicipal?: string;
+    nome: string; // Was razaoSocial
+    endereco?: {
+      logradouro: string;
+      numero: string;
+      complemento?: string;
+      bairro: string;
+      codigoMunicipio: string;
+      uf: string;
+      cep: string;
     };
-    razaoSocial: string;
-    endereco: Endereco;
-    contato?: Contato;
+    telefone?: string;
+    email?: string;
   };
   servico: {
-    codigoNbs: string;
-    discriminacao: string;
+    municipioPrestacao: string;
+    codigoTributacaoNacional: string;
+    codigoTributacaoMunicipal?: string; // Optional/Empty in test.js
+    descricao: string;
+    codigoNbs?: string; // Optional but recommended
+    codigoInterno?: string;
+    paisPrestacao?: string;
+  };
+  valores: {
     valorServicos: number;
+    tributacaoIssqn: 1 | 2 | 3;
+    tipoRetencaoIssqn: 1 | 2 | 3;
+    percentualTotalTributosSN?: number;
+    valorIss?: number;
+    aliquotaIssqn?: number;
     valorDeducoes?: number;
     valorPis?: number;
     valorCofins?: number;
     valorInss?: number;
     valorIr?: number;
     valorCsll?: number;
-    issRetido: boolean;
-    valorIss?: number;
-    aliquota?: number;
-    descontoIncondicionado?: number;
-    descontoCondicionado?: number;
-    itemListaServico: string;
-    codigoCnae?: string;
-    codigoTributacaoMunicipio?: string;
-    municipioPrestacao: string;
-    paisPrestacao?: string;
+    issRetido?: boolean; // Keep for backward compat or logic checks
+    descontos?: {
+      incondicionado?: number;
+      condicionado?: number;
+    };
+    deducaoReducao?: {
+      percentual?: number;
+      valor?: number;
+    };
+    tributosDetalhado?: {
+      federal: number;
+      estadual: number;
+      municipal: number;
+    };
   };
+  infosComp?: string;
   construcaoCivil?: {
     codigoObra?: string;
     art?: string;
-    inscricaoImobiliaria?: string;
-    endereco?: Endereco;
-  };
-  atividadesEvento?: {
-    codigoEvento: string;
-    nomeEvento: string;
-    dataInicio: Date;
-    dataFim: Date;
-    endereco: Endereco;
-  };
-  ibsCbs?: {
-    situacaoTributaria: string;
-    classificacaoTributaria: string;
-    valorAliquota?: number;
-    valorIBS?: number;
-    valorCBS?: number;
   };
 }
 
+export interface MensagemProcessamento {
+  codigo?: string;
+  descricao?: string;
+  correcao?: string;
+}
+
 export interface NFSeResponse {
-    chaveAcesso: string;
-    // ... other fields from the API response
+  tipoAmbiente: number;
+  versaoAplicativo: string;
+  dataHoraProcessamento: string;
+  idDps: string;
+  chaveAcesso: string;
+  nfseXmlGZipB64: string;
+  alertas?: MensagemProcessamento[];
+}
+
+export interface DPSResponse {
+  tipoAmbiente: number;
+  versaoAplicativo: string;
+  dataHoraProcessamento: string;
+  idDps: string;
+  chaveAcesso: string;
 }

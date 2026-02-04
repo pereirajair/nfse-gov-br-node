@@ -1,8 +1,9 @@
 import * as forge from 'node-forge';
+import { SignedXml } from 'xml-crypto';
 import { CertificateData } from './certificate';
 
 /**
- * Signs an XML string with the provided certificate data.
+ * Signs an XML string with the provided certificate data using xml-crypto.
  *
  * @param xml The XML string to sign.
  * @param certificateData The certificate data to use for signing.
@@ -12,49 +13,64 @@ import { CertificateData } from './certificate';
 export function signXml(xml: string, certificateData: CertificateData, tagToSign: string): string {
     const { privateKey, certificate } = certificateData;
 
-    // 1. Create the digest of the XML
-    const md = forge.md.sha256.create();
-    md.update(xml, 'utf8');
-    const digest = md.digest().bytes();
-    const digestB64 = forge.util.encode64(digest);
-
-    // 2. Define the <SignedInfo> block. This is what actually gets signed.
-    const signedInfo = `<SignedInfo>
-                <CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315" />
-                <SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256" />
-                <Reference URI="">
-                    <Transforms>
-                        <Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature" />
-                    </Transforms>
-                    <DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256" />
-                    <DigestValue>${digestB64}</DigestValue>
-                </Reference>
-            </SignedInfo>`;
-
-    // 3. Create the signature of the <SignedInfo> block
-    const signatureMd = forge.md.sha256.create();
-    signatureMd.update(signedInfo, 'utf8');
-    const signature = (privateKey as any).sign(signatureMd);
-    const signatureB64 = forge.util.encode64(signature);
-
-    // 4. Extract the certificate in Base64 format
+    // Convert keys to PEM format expected by xml-crypto
+    const privateKeyPem = forge.pki.privateKeyToPem(privateKey);
     const certPem = forge.pki.certificateToPem(certificate);
-    const certB64 = forge.util.encode64(certPem.replace(/-----BEGIN CERTIFICATE-----|-----END CERTIFICATE-----|\r|\n/g, ''));
 
+    // Helper to get pure base64 certificate (no headers)
+    const getCertB64 = (pem: string) => {
+        return pem.replace(/-----BEGIN CERTIFICATE-----|-----END CERTIFICATE-----|\r|\n/g, '');
+    };
 
-    // 5. Assemble the final <Signature> block
-    const signatureBlock = `<Signature xmlns="http://www.w3.org/2000/09/xmldsig#">
-            ${signedInfo}
-            <SignatureValue>${signatureB64}</SignatureValue>
-            <KeyInfo>
-                <X509Data>
-                    <X509Certificate>${certB64}</X509Certificate>
-                </X509Data>
-            </KeyInfo>
-        </Signature>`;
+    const sig = new SignedXml({
+        privateKey: privateKeyPem,
+        signatureAlgorithm: "http://www.w3.org/2000/09/xmldsig#rsa-sha1",
+        canonicalizationAlgorithm: "http://www.w3.org/TR/2001/REC-xml-c14n-20010315"
+    });
 
-    // 6. Inject the signature block into the original XML
-    const signedXml = xml.replace(`</${tagToSign}>`, `${signatureBlock}</${tagToSign}>`);
+    // Extract ID reference
+    // We assume the tagToSign matches the pattern <tagToSign ... Id="XYZ" ...>
+    const tagMatch = xml.match(new RegExp(`<${tagToSign}[^>]*Id="([^"]+)"[^>]*>`, 'i'));
+    const tagId = tagMatch ? tagMatch[1] : '';
+    const referenceUri = tagId ? `#${tagId}` : '';
+
+    if (!tagId) {
+        throw new Error(`Could not find Id attribute in tag '${tagToSign}' to sign.`);
+    }
+
+    // Add Reference
+    sig.addReference({
+        xpath: `//*[local-name(.)='${tagToSign}']`,
+        transforms: [
+            "http://www.w3.org/2000/09/xmldsig#enveloped-signature",
+            "http://www.w3.org/TR/2001/REC-xml-c14n-20010315"
+        ],
+        digestAlgorithm: "http://www.w3.org/2000/09/xmldsig#sha1",
+        uri: referenceUri
+    });
+
+    // Custom KeyInfo provider
+    // Implementing exactly as nfse-brazil-national does to ensure compatibility
+    // They overwrite the getKeyInfoContent method on the instance.
+    (sig as any).getKeyInfoContent = function ({ prefix }: { prefix: string }) {
+        const certB64 = getCertB64(certPem);
+        const p = prefix ? `${prefix}:` : "";
+        return `<${p}X509Data><${p}X509Certificate>${certB64}</${p}X509Certificate></${p}X509Data>`;
+    };
+
+    // Compute Signature
+    // xml-crypto expects the whole XML. By default it appends Signature to root.
+    // For DPS, root is <DPS>. <infDPS> is child.
+    // So Signature will become a sibling of <infDPS> (child of <DPS>).
+    // This matches the requirement "Signature invalid child of infDPS" -> means it must NOT be inside infDPS.
+    sig.computeSignature(xml, {
+        prefix: "", // No prefix for Signature namespace by default
+        attrs: {
+            xmlns: "http://www.w3.org/2000/09/xmldsig#"
+        }
+    });
+
+    let signedXml = sig.getSignedXml();
 
     return signedXml;
 }
