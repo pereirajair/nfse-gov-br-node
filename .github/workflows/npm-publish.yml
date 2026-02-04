@@ -4,8 +4,9 @@
 name: Node.js Package
 
 on:
-  release:
-    types: [created]
+  push:
+    tags:
+      - 'v*' # Dispara APENAS quando uma tag v0.0.1, v1.2.0, etc é enviada
 
 jobs:
   build:
