@@ -23,14 +23,15 @@ describe('Certificate Loader', () => {
 
   it('should load a certificate successfully', () => {
     const mockP12 = {
-      safeContents: [
-        {
-          safeBags: {
-            [forge.pki.oids.certBag]: [{ type: forge.pki.oids.certBag, cert: 'mockCert' }],
-            [forge.pki.oids.pkcs8ShroudedKeyBag]: [{ type: forge.pki.oids.pkcs8ShroudedKeyBag, key: 'mockKey' }],
-          }
+      getBags: jest.fn().mockImplementation(({ bagType }) => {
+        if (bagType === forge.pki.oids.certBag) {
+          return { [forge.pki.oids.certBag]: [{ cert: 'mockCert' }] };
         }
-      ],
+        if (bagType === forge.pki.oids.pkcs8ShroudedKeyBag) {
+          return { [forge.pki.oids.pkcs8ShroudedKeyBag]: [{ key: 'mockKey' }] };
+        }
+        return {};
+      })
     };
     (forge.pkcs12.pkcs12FromAsn1 as jest.Mock).mockReturnValue(mockP12);
 
@@ -41,9 +42,9 @@ describe('Certificate Loader', () => {
 
   it('should throw if password is wrong', () => {
     (forge.pkcs12.pkcs12FromAsn1 as jest.Mock).mockImplementation(() => {
-        throw new Error('Invalid password');
+      throw new Error('Invalid password');
     });
     expect(() => loadA1Certificate(Buffer.from(''), 'pwd'))
-        .toThrow('The provided password for the certificate is incorrect.');
+      .toThrow('The provided password for the certificate is incorrect.');
   });
 });

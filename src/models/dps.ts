@@ -63,7 +63,7 @@ export interface DPS {
     paisPrestacao?: string;
   };
   valores: {
-    valorServicos: number;
+    valorServicos: number | string;
     tributacaoIssqn: 1 | 2 | 3;
     tipoRetencaoIssqn: 1 | 2 | 3;
     percentualTotalTributosSN?: number;

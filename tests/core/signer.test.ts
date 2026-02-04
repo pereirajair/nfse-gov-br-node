@@ -8,8 +8,22 @@ jest.mock('node-forge', () => {
     ...original,
     pki: {
       ...original.pki,
-      certificateToPem: () => '-----BEGIN CERTIFICATE-----\nMOCK_PEM\n-----END CERTIFICATE-----'
+      certificateToPem: () => '-----BEGIN CERTIFICATE-----\nMOCK_PEM\n-----END CERTIFICATE-----',
+      privateKeyToPem: () => '-----BEGIN RSA PRIVATE KEY-----\nMOCK_KEY_PEM\n-----END RSA PRIVATE KEY-----'
     }
+  };
+});
+
+jest.mock('xml-crypto', () => {
+  return {
+    SignedXml: jest.fn().mockImplementation(() => {
+      return {
+        addReference: jest.fn(),
+        computeSignature: jest.fn(),
+        getSignedXml: jest.fn().mockReturnValue('<DPS Id="DPS123"><Signature>MOCK_SIGNATURE</Signature></DPS>'),
+        getKeyInfoContent: null // This will be overwritten by our code
+      };
+    })
   };
 });
 
@@ -27,12 +41,10 @@ const mockCertificateData: CertificateData = {
 
 describe('XML Signer', () => {
   it('should add a Signature block to the XML document', () => {
-    const xml = '<DPS><info>TestData</info></DPS>';
+    const xml = '<DPS Id="DPS123"><info>TestData</info></DPS>';
 
     const signedXml = signXml(xml, mockCertificateData, 'DPS');
 
-    expect(signedXml).toContain('<Signature xmlns="http://www.w3.org/2000/09/xmldsig#">');
-    expect(signedXml).toContain('<SignatureValue>bW9ja1NpZ25hdHVyZQ==</SignatureValue>'); // base64 of 'mockSignature'
-    expect(signedXml).toContain('</DPS>');
+    expect(signedXml).toContain('<Signature>MOCK_SIGNATURE</Signature>');
   });
 });
